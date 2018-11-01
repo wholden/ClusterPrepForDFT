@@ -5,5 +5,5 @@ setup(name='ClusterPrepForDFT',
       description='Working on systematically generating clusters to do solid state modelling in a molecular DFT code, e.g. NWChem',
       author='WEspec',
       packages=['ClusterPrepForDFT'],
-      requires=['pymatgen']
+      requires=[]
      )
