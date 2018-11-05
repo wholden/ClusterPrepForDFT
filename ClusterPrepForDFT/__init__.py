@@ -123,3 +123,13 @@ def make_bondmap_from_cif():
 #     centeratom='V',
 #     supercell=1, 
 #     clobber=True)
+
+def del_atom_at_coord(Molecule, coord):
+	#Example usage
+	# del_atom_at_coord(mol, [-5.68529,-3.53916,11.34309])
+    sites = Molecule.get_sites_in_sphere(coord, 0.001)
+    assert len(sites) == 1, 'Multiple sites found at coords'
+    site = sites[0][0]
+    siteindex = Molecule.index(site)
+    print('Removing site {} at index {}'.format(site, siteindex))
+    Molecule.remove_sites([siteindex])
