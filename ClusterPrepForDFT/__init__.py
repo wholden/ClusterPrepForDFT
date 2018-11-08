@@ -111,6 +111,42 @@ def cif_to_charged_cluster(file, bondmap, centeratom=False, supercell=None, oxid
     dumb_rename_center_atom(outfilename, mol)
 
 
+def cif_to_charged_cluster_within_radius(file, bondmap, radius, centeratom=False, supercell=None, oxid='guess', clobber=False):
+    '''Heads up, supercell needs to be large enough to cover the radius requested'''
+    assert file[-4:] == '.cif', 'Only works with cif files'
+    if oxid == 'guess':
+        mol = make_molecular_cluster_from_cif(file, supercell=supercell, guessoxid=True)
+    else:
+        mol = make_molecular_cluster_from_cif(file, supercell=supercell, guessoxid=False)
+        mol.add_oxidation_state_by_element(oxid)
+    
+    center_cluster_on_atom(mol, centeratom)
+    sites = mol.get_sites_in_sphere([0, 0, 0], radius)
+    mol = mg.Molecule([s[0].species_string for s in sites], [s[0].coords for s in sites])
+    assign_nearest_neighbors(mol)
+    
+    missing = calculate_missing_bonds(mol, bondmap)
+    charge, bondcharges = calculate_charge_for_cluster(missing, bondmap)
+    
+        
+    
+    outfilename = file[:-4]+'.xyz'
+    
+    if not clobber:
+        assert not os.path.exists(outfilename), 'Output file with name {} already exists!'.format(outfilename)
+
+    mol.add_oxidation_state_by_element(dict.fromkeys(mol.symbol_set))
+    mol.to('xyz', outfilename)
+
+    with open(outfilename, 'r+') as file:
+        lines = file.readlines()
+        lines[1] = '{}; charge for DFT cluster calculation: {}; based on bondchargemap: {};\n'.format(lines[1][:-1], charge, bondcharges)
+        file.seek(0)
+        file.writelines(lines)
+
+    dumb_rename_center_atom(outfilename, mol)
+
+
 def make_bondmap_from_cif():
     #TODO E
     pass
