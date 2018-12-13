@@ -60,7 +60,10 @@ def center_cluster_on_atom(Molecule, atom):
     centeratom = atom
     while True:
         sites = Molecule.get_sites_in_sphere(Molecule.center_of_mass, r)
-        found = [s[0].specie.element.name == centeratom for s in sites]
+        try:
+            found = [s[0].specie.element.name == centeratom for s in sites]
+        except AttributeError:
+            found = [s[0].specie.name == centeratom for s in sites]
         if any(found):
             break
         r += 0.1
