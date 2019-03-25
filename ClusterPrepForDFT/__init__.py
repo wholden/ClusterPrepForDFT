@@ -193,7 +193,7 @@ def get_nearest_sites_by_num_neighbors(mol, site, numnearest):
     return neighbors
 
 
-def make_hydrogen_capped_cluster_from_cif(outfilename, ciffile, numnearest, cappingdistances, bqchargemap, centeratom, sphereradius=6, supercell=6):
+def make_hydrogen_capped_cluster_from_cif_old_logic(outfilename, ciffile, numnearest, cappingdistances, bqchargemap, centeratom, sphereradius=6, supercell=6):
     '''Make hydrogen-capped cluster.
     
     Supercell needs to be big enough that all atoms in sphere and neighbors thereof
@@ -355,3 +355,82 @@ def adjust_site_to_target_angles(mol, adjustsite, neighborsite, targetangles, r=
         return minfunc(targetangles, get_neighbor_site_angles(mol, neighborsite, r))
     minimize(func, adjustsite._coords)
     return adjustsite._coords
+
+
+def make_hydrogen_capped_cluster_from_cif(outfilename, ciffile, numnearest, cappingdistances, bqchargemap, centeratom, sphereradius=6, supercell=6):
+    '''Make hydrogen-capped cluster.
+    
+    Supercell needs to be big enough that all atoms in sphere and neighbors thereof
+    have full neighbors.'''
+    print('Importing structure')
+    struct = mg.Structure.from_file(ciffile)
+    struct.make_supercell(supercell)
+    mol = mg.Molecule(struct.species, struct.cart_coords)
+    center_cluster_on_atom(mol, centeratom) # fixed 3.23.19 to add centeratom arg
+    remove_oxidation_state_from_species(mol)
+
+    print('Finding site inside/outside sphere.')
+    innersites = mol.get_sites_in_sphere([0, 0, 0], sphereradius)
+    inner = mg.Molecule.from_sites([s[0] for s in innersites])
+
+    neighboringmol = mg.Molecule([], [])
+    for isite in inner:
+        print('Checking neighbors of site {}'.format(mol.index(isite)), end='\r')
+        neighbors = get_nearest_sites_by_num_neighbors(mol, isite, numnearest)
+        for s, _ in neighbors:
+            if s not in inner:  
+
+                if s not in neighboringmol:
+                    neighboringmol.append(s.specie, s.coords)
+
+                try:
+                    neighboringmol[neighboringmol.index(s)].innerneighbors.append(isite)
+                except AttributeError:
+                    neighboringmol[neighboringmol.index(s)].innerneighbors = [isite]
+
+    hydrcoords = []
+    hydrneighbors = []
+    hydrreplace = []
+    for ns in neighboringmol:
+        for n in ns.innerneighbors:
+            hydrcoords.append(np.mean([ns.coords, n.coords], axis=0)) # create hydrogen halfway along bond
+            hydrneighbors.append(n) # keep track of neighbor identity
+            hydrreplace.append(ns) # keep track of identitiy of atom being replaced
+
+    hydrsites = [mg.Site('H', c) for c in hydrcoords]
+    hydr = mg.Molecule.from_sites(hydrsites)
+
+    # add hydrogen neighbors and adjust bond lengths accordingly
+    for hs, hn, hr in zip(hydrsites, hydrneighbors, hydrreplace):
+        hydr[hydr.index(hs)].innerneighbor = hn
+        hydr[hydr.index(hs)].replacing = hr
+    for s in hydr:
+        adjust_bond_length(s, s.innerneighbor, cappingdistances[str(s.innerneighbor.specie)])
+
+    capped = mg.Molecule.from_sites(hydr.sites + inner.sites)
+    print('Writing capped cluster file: ', '{}.xyz'.format(outfilename))
+    capped.to('xyz', '{}.xyz'.format(outfilename))
+
+    print('Writing bq charge file: ', '{}.bq'.format(outfilename))
+    totalbqcharge = 0
+    with open('{}.bq'.format(outfilename), 'w') as file:
+        for s in hydr:
+            file.write('Bq {:>15.8f}{:>15.8f}{:>15.8f}{:>10.4f}\n'.format(
+                *s.coords, bqchargemap[str(s.replacing.specie)]))
+            totalbqcharge += bqchargemap[str(s.replacing.specie)]
+
+    with open('{}.xyz'.format(outfilename), 'r') as file:
+        oldlines = file.readlines()
+
+    oldlines[1] = oldlines[1].strip() + '; Total bqcharge for capped cluster: {}\n'.format(totalbqcharge)
+    with open('{}.xyz'.format(outfilename), 'w') as file:
+        for line in oldlines:
+            file.write(line)
+
+
+def remove_oxidation_state_from_species(mol):
+    uniqueelements = []
+    for s in mol:
+        if s.specie.element not in uniqueelements:
+            uniqueelements.append(s.specie.element)
+    mol.add_oxidation_state_by_element(dict([(str(e), None) for e in uniqueelements]))
