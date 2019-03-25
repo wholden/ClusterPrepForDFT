@@ -47,7 +47,11 @@ def calculate_charge_for_cluster(missingbonds, bondmap):
     bondcharges = {}
     for k, v in bondmap.items():
         for k1, v1 in v.items():
-            bondcharges[k+k1] = float(k[-1]+k[-2]) / v1 # no 10+
+            try:
+                bondcharges[k+k1] = float(k[-1]+k[-2]) / v1 # no 10+
+            except ValueError: # handle single minus case
+                print('Charge parse error, trying case +/- 1')
+                bondcharges[k+k1] = float(k[-1]+'1') / v1 # no 10+
             
     totalcharge = 0
     for k, v in missingbonds.items():
@@ -172,3 +176,80 @@ def del_atom_at_coord(Molecule, coord):
     siteindex = Molecule.index(site)
     print('Removing site {} at index {}'.format(site, siteindex))
     Molecule.remove_sites([siteindex])
+
+
+def get_nearest_sites_by_num_neighbors(mol, site, numnearest):
+    num = numnearest[str(site.specie)]
+    
+    neighbors = []
+    rinit= 0.4 # angstroms
+    while len(neighbors) < num:
+        rinit += 0.1
+        neighbors = mol.get_neighbors(site, rinit)
+        if rinit > 10:
+            raise RuntimeError('Number of requested nearest neighbors not found')
+    return neighbors
+
+
+def make_hydrogen_capped_cluster_from_cif(outfilename, ciffile, numnearest, cappingdistances, bqchargemap, centeratom, sphereradius=6, supercell=6):
+    '''Make hydrogen-capped cluster.
+    
+    Supercell needs to be big enough that all atoms in sphere and neighbors thereof
+    have full neighbors.'''
+    print('Importing structure')
+    struct = mg.Structure.from_file(ciffile)
+    struct.make_supercell(6)
+    mol = mg.Molecule(struct.species, struct.cart_coords)
+    center_cluster_on_atom(mol, centeratom) # fixed 3.23.19 to add centeratom arg
+
+    print('Finding site inside/outside sphere.')
+    innersites = mol.get_sites_in_sphere([0, 0, 0], sphereradius)
+    inner = mg.Molecule.from_sites([s[0] for s in innersites])
+    SHELLDIST = 4
+    outersites = mol.get_neighbors_in_shell([0, 0, 0], sphereradius + SHELLDIST / 2, SHELLDIST / 2)
+
+    outersiteindices = []
+    for site, _ in outersites:
+        outersiteindices.append(mol.index(site))
+    neighboringsites = []
+    for osi in outersiteindices:
+        print('Checking neighbors of site {}'.format(osi), end='\r')
+        neighbors = get_nearest_sites_by_num_neighbors(mol, mol[osi], numnearest)
+        for s, _ in neighbors:
+            if s in inner:            
+                try:
+                    mol[osi].innerneighbors.append(s)
+                except AttributeError:
+                    mol[osi].innerneighbors = [s]
+
+                if osi not in neighboringsites:
+                    neighboringsites.append(osi)
+
+    hydrcoords = []
+    hydrneighbors = []
+    hydrreplace = []
+    for ns in neighboringsites:
+        ocoords = mol[ns].coords
+        for n in mol[ns].innerneighbors:
+            hydrcoords.append(np.mean([ocoords, n.coords], axis=0))
+            hydrneighbors.append(n)
+            hydrreplace.append(mol[ns])
+
+    hydrsites = [mg.Site('H', c) for c in hydrcoords]
+    hydr = mg.Molecule.from_sites(hydrsites)
+
+    # add hydrogen neighbors and adjust bond lengths accordingly
+    for hs, hn, hr in zip(hydrsites, hydrneighbors, hydrreplace):
+        hydr[hydr.index(hs)].innerneighbor = hn
+        hydr[hydr.index(hs)].replacing = hr
+    for s in hydr:
+        adjust_bond_length(s, s.innerneighbor, cappingdistances[str(s.innerneighbor.specie)])
+
+    capped = mg.Molecule.from_sites(hydr.sites + inner.sites)
+    print('Writing capped cluster file: ', '{}.xyz'.format(outfilename))
+    capped.to('xyz', '{}.xyz'.format(outfilename))
+    print('Writing bq charge file: ', '{}.bq'.format(outfilename))
+    with open('{}.bq'.format(outfilename), 'w') as file:
+        for s in hydr:
+            file.write('Bq {:>15.8f}{:>15.8f}{:>15.8f}{:>10.4f}\n'.format(
+                *s.coords, bqchargemap[str(s.replacing.specie)]))
