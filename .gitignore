@@ -26,3 +26,5 @@ build
 dist
 ClusterPrepForDFT.egg-info
 *.pyc
+*.md~
+*.un~

@@ -10,6 +10,8 @@ Windows: If you run into issues with `spglib` requiring microsoft visual studio 
 - (1) Install instead through conda: `conda install -c conda-forge spglib`
 - (2) Install build tools and run the pip install command again. See (https://stackoverflow.com/questions/64261546/python-cant-install-packages) for more details.
 
+Trial text for git push
+
 
 Quick command for installing visual studio build tools:
 Download build tools directly: https://aka.ms/vs/16/release/vs_buildtools.exe
