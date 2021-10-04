@@ -1,0 +1,62 @@
+data_global
+_chemical_name_mineral 'Staurolite'
+loop_
+_publ_author_name
+'Caucia F'
+'Callegari A'
+'Oberti R'
+'Ungaretti L'
+'Hawthorne F C'
+_journal_name_full 'The Canadian Mineralogist'
+_journal_volume 32 
+_journal_year 1994
+_journal_page_first 477
+_journal_page_last 489
+_publ_section_title
+;
+ Structural aspects of oxidation-dehydrogenation in staurolite
+ Sample: T = 25 C
+;
+_database_code_amcsd 0005371
+_chemical_formula_sum 'Si1.9 Al4.93 Fe.85 Zn.01 Mg.2 O12 H'
+_cell_length_a 7.864
+_cell_length_b 16.619
+_cell_length_c 5.659
+_cell_angle_alpha 90
+_cell_angle_beta 90.17
+_cell_angle_gamma 90
+_cell_volume 739.582
+_exptl_crystal_density_diffrn      3.883
+_symmetry_space_group_name_H-M 'C 1 2/m 1'
+loop_
+_space_group_symop_operation_xyz
+  'x,y,z'
+  '1/2+x,1/2+y,z'
+  'x,-y,z'
+  '1/2+x,1/2-y,z'
+  '-x,y,-z'
+  '1/2-x,1/2+y,-z'
+  '-x,-y,-z'
+  '1/2-x,1/2-y,-z'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_U_iso_or_equiv
+Si   0.13413   0.16602   0.24851   1   0.00367
+Fe   0.39198   0.00000   0.24777   1   0.01482
+Al   0.50000   0.17527   0.00000   1   0.00456
+Al   0.50000   0.17510   0.50000   1   0.00456
+Al   0.26336   0.41067   0.25170   1   0.00595
+Al   0.00000   0.00000   0.00000   1   0.00545
+Al   0.00000   0.00000   0.50000   1   0.00532
+O    0.23340   0.00000   0.96302   1   0.00849
+O    0.23618   0.00000   0.53372   1   0.00912
+O    0.25552   0.16153   0.01537   1   0.00519
+O    0.25437   0.16126   0.48387   1   0.00545
+O    0.00177   0.08894   0.24523   1   0.00798
+O    0.02154   0.24918   0.24963   1   0.00532
+O    0.52700   0.10039   0.24952   1   0.00507
+
