@@ -11,16 +11,12 @@ class MolecularCluster(mg.core.Molecule):
     @classmethod
     def from_file(cls, filename, cluster_radius, center_atom):
         structure = mg.core.Structure.from_file(filename)
-        cart_sizes = [
-            structure.cart_coords[:, 0].max() - structure.cart_coords[:, 0].min(),
-            structure.cart_coords[:, 1].max() - structure.cart_coords[:, 1].min(),
-            structure.cart_coords[:, 2].max() - structure.cart_coords[:, 2].min(),
-        ]
-        structure.make_supercell([np.ceil(cluster_radius * 2 / sz) for sz in cart_sizes])
-        mol = super().from_sites(structure.sites)
-        center_cluster_on_atom(mol, center_atom)
-        sites = mol.get_sites_in_sphere([0, 0, 0], cluster_radius)
-        return super().from_sites(sites)
+        index = structure.species.index(mg.core.Element(center_atom))
+        sites = structure.get_sites_in_sphere(structure[index].coords, cluster_radius)
+        sites = [s[0] for s in sites] # drop calculated distances
+        mol = cls.from_sites(sites)
+        mol.translate_sites(vector=-structure[index].coords)
+        return mol
         
     def display_jupyter(self, center_color='rgb(3,248,252)'):
         import nglview
