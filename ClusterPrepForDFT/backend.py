@@ -1,5 +1,7 @@
 import numpy as np
 import pymatgen as mg
+from tqdm.notebook import tqdm
+from pymatgen.analysis.local_env import CrystalNN
 from ClusterPrepForDFT import center_cluster_on_atom
 
 
@@ -15,6 +17,7 @@ class MolecularCluster(mg.core.Molecule):
         sites = [s[0] for s in sites] # drop calculated distances
         new = MolecularCluster.from_sites(sites)
         new.translate_sites(vector=-structure[index].coords)
+        new._inner_sites = sites
         return new
         
     @classmethod
@@ -48,8 +51,8 @@ class MolecularCluster(mg.core.Molecule):
     @staticmethod
     def classify_unique_sites(structure):
         uniques = []
-        for site in structure:
-            parsed_props = parse_site_props(structure, structure.index(site))
+        for site in tqdm(structure):
+            parsed_props = MolecularCluster.parse_site_props(structure, structure.index(site))
             site._parsed_props = parsed_props
             if parsed_props not in uniques:
                 uniques.append(parsed_props)
